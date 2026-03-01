@@ -13,27 +13,12 @@ const statusMeta = (isApproved) => {
 
 const SharedFiles = () => {
     const navigate = useNavigate();
-    const { user, getUserProfile } = useAuth();
-    const [profile, setProfile] = useState(null);
+    const { user, userProfile: profile } = useAuth();
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     const isHead = useMemo(() => profile?.position === 'head', [profile]);
-
-    // Load user profile to get department id (d_uuid) and role
-    useEffect(() => {
-        const load = async () => {
-            if (!user?.id) return;
-            try {
-                const data = await getUserProfile(user.id);
-                setProfile(data);
-            } catch (e) {
-                setError('Unable to load user profile');
-            }
-        };
-        load();
-    }, [user?.id, getUserProfile]);
 
     // Fetch shared files for this department - only last 7 days
     useEffect(() => {

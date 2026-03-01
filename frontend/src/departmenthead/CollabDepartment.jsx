@@ -200,8 +200,7 @@ const FileList = ({ title, rows, isHead, onApprove, onReject, importantMap, togg
 const CollabDepartment = () => {
   const { departmentId } = useParams();
   const navigate = useNavigate();
-  const { user, getUserProfile } = useAuth();
-  const [profile, setProfile] = useState(null);
+  const { user, userProfile: profile } = useAuth();
   const [department, setDepartment] = useState(null);
   const [received, setReceived] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -224,20 +223,6 @@ const CollabDepartment = () => {
   }, []);
 
   const isHead = useMemo(() => profile?.position === 'head', [profile]);
-
-  // Load user profile
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (!user?.id) return;
-      try {
-        const data = await getUserProfile(user.id);
-        setProfile(data);
-      } catch (e) {
-        setError('Failed to load user profile');
-      }
-    };
-    loadProfile();
-  }, [user?.id, getUserProfile]);
 
   // Load department details
   useEffect(() => {

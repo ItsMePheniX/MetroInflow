@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
+import { createUser as apiCreateUser } from '../adminApi';
 
 const UserRegistrationForm = ({ onUserAdded }) => {
   const [formData, setFormData] = useState({
@@ -143,55 +144,20 @@ const UserRegistrationForm = ({ onUserAdded }) => {
         position,
       } = formData;
 
-      // 1. Create account in Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: process.env.REACT_APP_REDIRECT_URL || "http://localhost:3000/login",
-        },
-      });
+      // Use backend admin API to create the user (service-role key stays on the server).
+      // The Postgres trigger (handle_new_user) auto-creates the public.users row from user_metadata.
+      const userMetadata = {
+        name: fullName,
+        phone_number: phoneNumber,
+        dob: dob || null,
+        gender: gender || null,
+        address: address || null,
+        d_uuid: departmentUuid || null,
+        r_uuid: position === "head" ? null : (roleUuid || null),
+        position: position || "regular",
+      };
 
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      // Use the stored departmentUuid directly
-      let d_uuid = departmentUuid || null;
-
-      // 3. Insert into "user" table
-      if (data.user) {
-        const { error: userError } = await supabase.from("users").insert([
-          {
-            uuid: data.user.id,
-            email,
-            name: fullName,
-            phone_number: phoneNumber,
-            dob,
-            gender,
-            address,
-            d_uuid,
-            r_uuid: position === "head" ? null : (roleUuid || null),
-            position,
-            age: dob
-              ? (() => {
-                const today = new Date();
-                const birth = new Date(dob);
-                let age = today.getFullYear() - birth.getFullYear();
-                const monthDiff = today.getMonth() - birth.getMonth();
-                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-                  age--;
-                }
-                return age;
-              })()
-              : null,
-          },
-        ]);
-
-        if (userError) {
-          throw new Error(userError.message);
-        }
-      }
+      await apiCreateUser({ email, password, userMetadata });
 
       // Success
       setRegistrationStatus({

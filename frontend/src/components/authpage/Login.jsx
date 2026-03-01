@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; // Ensure this path is correct
-import { supabase } from '../../supabaseClient';
+import { useAuth } from '../context/AuthContext';
+import { adminLogin } from '../../Admin/adminApi';
 import { safeLocalStorage } from '../../utils/localStorage';
 
 const Login = () => {
@@ -23,26 +23,15 @@ const Login = () => {
 
     try {
       if (isAdminLogin) {
-        // Admin login
-        const { data, error } = await supabase
-          .from('admin')
-          .select()
-          .eq('a_username', username)
-          .single();
-
-        if (error) {
-          setError('Admin username not found');
-        } else if (data && data.a_pass === password) {
-          // Store admin session in localStorage
-          safeLocalStorage.setItem('adminSession', JSON.stringify({
-            isAdmin: true,
-            username: data.a_username,
-            adminId: data.a_uuid
-          }));
-          navigate('/admin-dashboard');
-        } else {
-          setError('Invalid admin credentials');
-        }
+        // Admin login — verified by the Go backend (no service-role key in the browser)
+        const data = await adminLogin(username, password);
+        safeLocalStorage.setItem('adminSession', JSON.stringify({
+          isAdmin: true,
+          username: data.username,
+          adminId: data.adminId,
+          token: data.token,
+        }));
+        navigate('/admin-dashboard');
       } else {
         // Regular user login
         const { error: signInError } = await signInUser(email, password);
@@ -50,12 +39,11 @@ const Login = () => {
         if (signInError) {
           setError(signInError.message);
         } else {
-        
-          navigate('/'); // Correctly navigate to the root protected route
+          navigate('/');
         }
       }
     } catch (e) {
-      setError('An unexpected error occurred. Please try again.');
+      setError(e.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -18,8 +19,9 @@ import (
 )
 
 type SupabaseClient struct {
-	URL string
-	Key string
+	URL            string
+	Key            string
+	ServiceRoleKey string
 }
 
 // DownloadFile downloads a file from Supabase Storage to a local path
@@ -60,8 +62,12 @@ var DB *sql.DB
 // InitConfig loads Supabase credentials
 func InitConfig() {
 	Supabase = SupabaseClient{
-		URL: os.Getenv("SUPABASE_URL"),
-		Key: os.Getenv("SUPABASE_SERVICE_KEY"),
+		URL:            os.Getenv("SUPABASE_URL"),
+		Key:            os.Getenv("SUPABASE_SERVICE_KEY"),
+		ServiceRoleKey: os.Getenv("SUPABASE_SERVICE_ROLE_KEY"),
+	}
+	if Supabase.ServiceRoleKey == "" {
+		log.Println("WARNING: SUPABASE_SERVICE_ROLE_KEY not set — admin auth API operations will fail")
 	}
 }
 
@@ -141,8 +147,3 @@ func (s SupabaseClient) InsertDocument(doc models.Document) (string, error) {
 	}
 	return inserted[0].FUUID, nil
 }
-
-
-
-
-

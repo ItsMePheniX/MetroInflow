@@ -203,8 +203,7 @@ const CollabFolders = () => {
   const navigate = useNavigate();
 
   
-  const { user, getUserProfile } = useAuth();
-  const [profile, setProfile] = useState(null);
+  const { user, userProfile: profile, getUserProfile } = useAuth();
   const [received, setReceived] = useState([]);
   const [sent, setSent] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -409,42 +408,6 @@ const CollabFolders = () => {
       setTestResults(`Test ERROR: ${e.message}`);
     }
   };
-
-  useEffect(() => {
-    const load = async () => {
-      
-      if (!user?.id) {
-        return;
-      }
-      
-      try {
-        const data = await getUserProfile(user.id);
-        setProfile(data);
-      } catch (e) {
-        setError('Failed to load profile: ' + e.message);
-      }
-    };
-    
-    // Network diagnostics
-    
-    // Test basic network connectivity
-    fetch('https://www.google.com/favicon.ico')
-      .then(res => {
-        // Connectivity successful
-      })
-      .catch(err => {
-        // Connection failed
-      });
-      
-    // Check if Supabase is defined and configured
-    if (supabase) {
-      // Supabase client exists
-    } else {
-      // Supabase client is not properly initialized
-    }
-    
-    load();
-  }, [user?.id, getUserProfile]);
 
   useEffect(() => {
     const fetchData = async () => {

@@ -594,7 +594,7 @@ const Notifications = () => {
           Notifications
         </h1>
         <button
-          onClick={() => window.location.reload()}
+          onClick={fetchNotifications}
           className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
         >
           <ArrowPathIcon className="h-4 w-4" />
@@ -609,7 +609,7 @@ const Notifications = () => {
             <p className="font-medium">Error loading notifications</p>
             <p className="text-sm mt-1">{error}</p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => { setError(null); fetchNotifications(); }}
               className="mt-2 text-sm font-medium text-red-700 hover:text-red-800 underline">
               Try Again
             </button>
