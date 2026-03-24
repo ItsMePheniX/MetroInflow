@@ -585,8 +585,8 @@ const HeadDashboard = () => {
                         const { data, error } = await supabase
                             .from('users')
                             .select('*, department(*)')
-                            .eq('id', user.id)
-                            .single();
+                            .eq('uuid', user.id)
+                            .maybeSingle();
 
                         if (!error && data) {
                             userData = data;
@@ -600,8 +600,8 @@ const HeadDashboard = () => {
                             const { data, error } = await supabase
                                 .from('users')
                                 .select('*')
-                                .eq('id', user.id)
-                                .single();
+                                .eq('uuid', user.id)
+                                .maybeSingle();
 
                             if (!error && data) {
                                 userData = data;
@@ -838,7 +838,7 @@ const HeadDashboard = () => {
                 .from("users")
                 .select("uuid")
                 .eq("uuid", user.id)
-                .single();
+                .maybeSingle();
 
             if (userError || !userData) {
                 throw new Error(userError?.message || "Could not find user profile.");

@@ -29,7 +29,7 @@ export const NotificationProvider = ({ children }) => {
         .from('users')
         .select('d_uuid, position')
         .eq('uuid', user.id)
-        .single();
+        .maybeSingle();
 
       if (userError || !userData?.d_uuid) {
         setNotificationCount(0);

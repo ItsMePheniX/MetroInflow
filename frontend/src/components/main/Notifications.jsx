@@ -62,9 +62,9 @@ const Notifications = () => {
         .from('users')
         .select('d_uuid, position')
         .eq('uuid', user.id)
-        .single();
+        .maybeSingle();
 
-      if (userError || userData.position !== 'head') {
+      if (userError || !userData || userData.position !== 'head') {
         setError('Only department heads can approve or reject files');
         return;
       }
@@ -184,7 +184,7 @@ const Notifications = () => {
         .from('users')
         .select('d_uuid, position')
         .eq('uuid', user.id)
-        .single();
+        .maybeSingle();
 
       if (userError || !userData?.d_uuid) return;
 
@@ -349,10 +349,10 @@ const Notifications = () => {
         .from('users')
         .select('d_uuid, position')
         .eq('uuid', user.id)
-        .single();
+        .maybeSingle();
 
-      if (userError) {
-        setError(`User profile error: ${userError.message}`);
+      if (userError || !userData) {
+        setError(userError ? `User profile error: ${userError.message}` : 'Profile not found');
         updateNotificationCount(0);
         setLoading(false);
         return;

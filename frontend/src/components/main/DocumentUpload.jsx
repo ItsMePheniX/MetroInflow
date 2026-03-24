@@ -39,7 +39,7 @@ const DocumentUpload = () => {
           department(d_name, d_uuid)
         `)
         .eq("uuid", user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         setStatus({ message: "Could not load user profile.", type: "error" });
@@ -114,7 +114,7 @@ const DocumentUpload = () => {
         .from("users")
         .select("uuid")
         .eq("uuid", user.id)
-        .single();
+        .maybeSingle();
       if (userError || !userData) {
         throw new Error(userError?.message || "Could not find user profile.");
       }

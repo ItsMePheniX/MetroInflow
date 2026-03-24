@@ -1,9 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from './components/context/AuthContext';
 import { Navigate } from 'react-router-dom';
 
 const RoleProtectedRoute = ({ children, requiredPosition = null, restrictToPosition = null }) => {
   const { user, userProfile, profileLoading, signOutUser } = useAuth();
+
+  // If user is logged in but profile is missing, sign out (stale session)
+  // useEffect to avoid calling setState during render of another component
+  useEffect(() => {
+    if (user && !userProfile && !profileLoading) {
+      signOutUser();
+    }
+  }, [user, userProfile, profileLoading, signOutUser]);
 
   // If still loading, show spinner
   if (profileLoading) {
@@ -14,9 +22,8 @@ const RoleProtectedRoute = ({ children, requiredPosition = null, restrictToPosit
     );
   }
 
-  // If user is logged in but profile is missing, sign out (stale session)
-  if (user && !userProfile && !profileLoading) {
-    signOutUser();
+  // If user is logged in but profile is missing, show loading while signOut happens
+  if (user && !userProfile) {
     return null;
   }
 

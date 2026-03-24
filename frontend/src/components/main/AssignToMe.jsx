@@ -35,7 +35,7 @@ const AssignToMe = () => {
         .from("users")
         .select("d_uuid, department(d_name)")
         .eq("uuid", user.id)
-        .single();
+        .maybeSingle();
       if (!error) setUserDepartment(data);
     };
     run();

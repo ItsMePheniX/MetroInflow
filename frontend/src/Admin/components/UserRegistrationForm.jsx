@@ -108,7 +108,7 @@ const UserRegistrationForm = ({ onUserAdded }) => {
       setRegistrationStatus({
         loading: false,
         success: false,
-        error: "Not all fields are filled"
+        error: "Passwords do not match"
       });
       return;
     }
@@ -119,7 +119,7 @@ const UserRegistrationForm = ({ onUserAdded }) => {
       setRegistrationStatus({
         loading: false,
         success: false,
-        error: "Not all fields are filled"
+        error: "Please select a role for this department"
       });
       return;
     }
@@ -191,7 +191,7 @@ const UserRegistrationForm = ({ onUserAdded }) => {
       setRegistrationStatus({
         loading: false,
         success: false,
-        error: "Not all fields are filled"
+        error: err.message || "Registration failed. Please try again."
       });
     }
   };
@@ -215,10 +215,12 @@ const UserRegistrationForm = ({ onUserAdded }) => {
       <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Full Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+          <label htmlFor="reg-fullName" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
           <input
+            id="reg-fullName"
             type="text"
             name="fullName"
+            autoComplete="name"
             required
             value={formData.fullName}
             onChange={handleChange}
@@ -228,10 +230,12 @@ const UserRegistrationForm = ({ onUserAdded }) => {
 
         {/* Email */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <label htmlFor="reg-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
           <input
+            id="reg-email"
             type="email"
             name="email"
+            autoComplete="email"
             required
             value={formData.email}
             onChange={handleChange}
@@ -241,10 +245,12 @@ const UserRegistrationForm = ({ onUserAdded }) => {
 
         {/* Phone Number */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+          <label htmlFor="reg-phoneNumber" className="block text-sm font-medium text-gray-700">Phone Number</label>
           <input
+            id="reg-phoneNumber"
             type="tel"
             name="phoneNumber"
+            autoComplete="tel"
             required
             value={formData.phoneNumber}
             onChange={handleChange}
@@ -254,10 +260,12 @@ const UserRegistrationForm = ({ onUserAdded }) => {
 
         {/* Date of Birth */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
+          <label htmlFor="reg-dob" className="block text-sm font-medium text-gray-700">Date of Birth</label>
           <input
+            id="reg-dob"
             type="date"
             name="dob"
+            autoComplete="bday"
             required
             value={formData.dob}
             onChange={handleChange}
@@ -267,8 +275,9 @@ const UserRegistrationForm = ({ onUserAdded }) => {
 
         {/* Department */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Department</label>
+          <label htmlFor="reg-departmentName" className="block text-sm font-medium text-gray-700">Department</label>
           <select
+            id="reg-departmentName"
             name="departmentName"
             value={formData.departmentName}
             onChange={handleChange}
@@ -287,8 +296,9 @@ const UserRegistrationForm = ({ onUserAdded }) => {
         {/* Position */}
         {formData.departmentName && (
           <div>
-            <label className="block text-sm font-medium text-gray-700">Position</label>
+            <label htmlFor="reg-position" className="block text-sm font-medium text-gray-700">Position</label>
             <select
+              id="reg-position"
               name="position"
               value={formData.position}
               onChange={handleChange}
@@ -303,8 +313,9 @@ const UserRegistrationForm = ({ onUserAdded }) => {
         {/* Role - Only show if not department head */}
         {formData.departmentName && formData.position !== "head" && (
           <div>
-            <label className="block text-sm font-medium text-gray-700">Role</label>
+            <label htmlFor="reg-roleUuid" className="block text-sm font-medium text-gray-700">Role</label>
             <select
+              id="reg-roleUuid"
               name="roleUuid"
               value={formData.roleUuid}
               onChange={handleChange}
@@ -335,10 +346,12 @@ const UserRegistrationForm = ({ onUserAdded }) => {
 
         {/* Password */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Password</label>
+          <label htmlFor="reg-password" className="block text-sm font-medium text-gray-700">Password</label>
           <input
+            id="reg-password"
             type="password"
             name="password"
+            autoComplete="new-password"
             required
             value={formData.password}
             onChange={handleChange}
@@ -348,10 +361,12 @@ const UserRegistrationForm = ({ onUserAdded }) => {
 
         {/* Confirm Password */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
+          <label htmlFor="reg-confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
           <input
+            id="reg-confirmPassword"
             type="password"
             name="confirmPassword"
+            autoComplete="new-password"
             required
             value={formData.confirmPassword}
             onChange={handleChange}
@@ -380,9 +395,11 @@ const UserRegistrationForm = ({ onUserAdded }) => {
 
         {/* Address */}
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700">Address</label>
+          <label htmlFor="reg-address" className="block text-sm font-medium text-gray-700">Address</label>
           <textarea
+            id="reg-address"
             name="address"
+            autoComplete="street-address"
             rows="3"
             value={formData.address}
             onChange={handleChange}

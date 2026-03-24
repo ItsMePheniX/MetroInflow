@@ -335,11 +335,23 @@ func AdminCreateUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Basic server-side validation
+	if req.Email == "" || req.Password == "" {
+		http.Error(w, `{"error":"email and password are required"}`, http.StatusBadRequest)
+		return
+	}
+	if len(req.Password) < 6 {
+		http.Error(w, `{"error":"password must be at least 6 characters"}`, http.StatusBadRequest)
+		return
+	}
+
 	// Build the Supabase Auth Admin API payload
+	// email_confirm: false → Supabase marks the email as unverified, then we trigger
+	// the confirmation email separately via /auth/v1/resend.
 	payload := map[string]interface{}{
 		"email":         req.Email,
 		"password":      req.Password,
-		"email_confirm": true,
+		"email_confirm": false,
 		"user_metadata": req.UserMetadata,
 	}
 	body, _ := json.Marshal(payload)
@@ -351,7 +363,53 @@ func AdminCreateUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Log non-success responses from Supabase so we can debug
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		log.Printf("[ADMIN] Supabase create-user returned %d: %s", resp.StatusCode, string(respBody))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(resp.StatusCode)
+		w.Write(respBody)
+		return
+	}
+
+	// User created successfully — send the confirmation email in the background.
+	go sendConfirmationEmail(req.Email)
+
 	forwardJSON(w, resp)
+}
+
+// sendConfirmationEmail triggers Supabase to send the signup-confirmation email
+// by calling POST /auth/v1/resend with the anon key.
+func sendConfirmationEmail(email string) {
+	resendURL := config.Supabase.URL + "/auth/v1/resend"
+	payload, _ := json.Marshal(map[string]string{
+		"type":  "signup",
+		"email": email,
+	})
+
+	req, err := http.NewRequest("POST", resendURL, bytes.NewReader(payload))
+	if err != nil {
+		log.Printf("[ADMIN] Failed to build resend request: %v", err)
+		return
+	}
+	req.Header.Set("apikey", config.Supabase.Key) // anon key
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Printf("[ADMIN] Failed to call /auth/v1/resend: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		log.Printf("[ADMIN] /auth/v1/resend returned %d: %s", resp.StatusCode, string(body))
+	} else {
+		log.Printf("[ADMIN] Confirmation email sent to %s", email)
+	}
 }
 
 // ---------------------------------------------------------------------------

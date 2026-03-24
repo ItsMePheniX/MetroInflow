@@ -83,7 +83,7 @@ const DepartmentFiles = () => {
                     .from("users")
                     .select("d_uuid")
                     .eq("uuid", user.id)
-                    .single();
+                    .maybeSingle();
 
                 if (!userError && userProfile) {
                     setIsOwnDepartment(d_uuid === userProfile.d_uuid);
@@ -114,7 +114,7 @@ const DepartmentFiles = () => {
             .from("users")
             .select("d_uuid, position")
             .eq("uuid", user.id)
-            .single();
+            .maybeSingle();
 
         if (userError || !userProfile?.d_uuid) {
             setError("Could not determine your department.");

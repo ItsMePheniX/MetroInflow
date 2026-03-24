@@ -80,7 +80,7 @@ export async function createUser({ email, password, userMetadata }) {
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || data.msg || "Failed to create user");
+  if (!res.ok) throw new Error(data.error || data.msg || data.error_description || `Failed to create user (${res.status})`);
   return data;
 }
 
