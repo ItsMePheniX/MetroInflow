@@ -164,6 +164,7 @@ const DepartmentFiles = () => {
                         created_at,
                         file:f_uuid (
                             f_uuid,
+                            d_uuid,
                             uuid,
                             users:uuid ( d_uuid )
                         )
@@ -174,9 +175,14 @@ const DepartmentFiles = () => {
                 if (senderError) {
                     filesError = senderError;
                 } else {
-                    // Filter to only files from the selected sender department
+                    // Filter to files from the selected sender department
+                    // Match by file's creation department (d_uuid) OR the uploader's department (users.d_uuid)
                     const matchingEntries = (senderFiles || []).filter(
-                        item => item.file && item.file.users?.d_uuid === d_uuid
+                        item => item.file && (
+                            item.file.users?.d_uuid === d_uuid ||
+                            // Also check if the file was created in the target department
+                            item.file.d_uuid === d_uuid
+                        )
                     );
                     const totalFiltered = matchingEntries.length;
 

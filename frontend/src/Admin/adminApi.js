@@ -33,6 +33,15 @@ async function adminFetch(path, options = {}) {
     headers,
   });
 
+  // If the backend returns 401, the admin session is expired or invalid
+  // (e.g. backend was restarted and in-memory sessions were lost).
+  // Clear the stale session and redirect to login.
+  if (res.status === 401) {
+    localStorage.removeItem("adminSession");
+    window.location.href = "/login";
+    throw new Error("Admin session expired. Please log in again.");
+  }
+
   return res;
 }
 

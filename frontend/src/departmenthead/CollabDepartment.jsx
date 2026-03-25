@@ -337,41 +337,8 @@ const CollabDepartment = () => {
           });
 
 
-        // Show a helpful message when there are no files from this department
-        if (recData && recData.length > 0 && recMapped.length === 0) {
-          setError(`No files from ${department?.d_name || 'this department'} have been shared with your department yet. Check with the department head if you're expecting files.`);
-        } else if (recMapped.length === 0) {
-          // If we're not showing any files
-          setError(`No files from ${department?.d_name || 'this department'} have been shared with your department yet.`);
-
-          // If we're showing other departments, gather a list of unique departments from both sender and file departments
-          // This ensures we include both the departments where files were created AND departments that shared them
-          const fileDeptIds = new Set(recMapped.filter(f => f.fileDeptId).map(f => f.fileDeptId));
-          const senderDeptIds = new Set(recMapped.filter(f => f.senderDeptId).map(f => f.senderDeptId));
-          const allDeptIds = new Set([...Array.from(fileDeptIds), ...Array.from(senderDeptIds)]);
-
-          if (allDeptIds.size > 0) {
-
-            // Fetch department names for all relevant departments
-            const fetchDeptNames = async () => {
-              const { data } = await supabase
-                .from('department')
-                .select('d_uuid, d_name')
-                .in('d_uuid', Array.from(allDeptIds));
-
-              if (data) {
-
-                // Store department list for filtering
-                setDepartmentList(data);
-              }
-            };
-
-            fetchDeptNames();
-          }
-        } else {
-          // Clear any previous error if we have files to show
-          setError(null);
-        }
+        // Clear any previous error
+        setError(null);
 
         setReceived(recMapped);
       } catch (e) {
@@ -403,7 +370,8 @@ const CollabDepartment = () => {
 
       return () => { supabase.removeChannel(channel); };
     }
-  }, [profile?.d_uuid, departmentId, department?.d_name]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.d_uuid, departmentId]);
 
   // Handle important marking
   const persistImportant = (next) => {
@@ -513,16 +481,10 @@ const CollabDepartment = () => {
         </div>
       </div>
 
-      {/* Error message if any */}
-      {error && (
-        <div className="mb-6 bg-yellow-50 border border-yellow-200 text-yellow-700 p-4 rounded-md">
-          <div className="flex">
-            <InformationCircleIcon className="h-5 w-5 mr-2" />
-            <div>
-              <p className="font-medium">Note</p>
-              <p>{error}</p>
-            </div>
-          </div>
+      {/* Error message - only show actual errors, not empty states */}
+      {error && received.length === 0 && !loading && (
+        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 p-3 rounded-md text-sm">
+          {error}
         </div>
       )}
 
@@ -583,33 +545,9 @@ const CollabDepartment = () => {
               </div>
 
               {received.length === 0 ? (
-                <div className="border rounded bg-yellow-50 p-4">
-                  <div className="flex items-start">
-                    <InformationCircleIcon className="h-6 w-6 text-yellow-700 mr-3" />
-                    <div>
-                      <h4 className="font-medium text-yellow-800">No files available</h4>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        No files have been shared from {department?.d_name || 'this department'} that match the current filters.
-                      </p>
-                      <div className="text-xs text-yellow-800 mt-2 bg-yellow-100 p-2 rounded">
-                        <p className="font-medium">Troubleshooting tips:</p>
-                        <ul className="list-disc list-inside mt-1">
-                          <li>Check if {department?.d_name || 'this department'} has shared any files</li>
-                          <li>Ask the department head to share files with your department</li>
-                          <li>Try selecting a different filter option above</li>
-                          <li>Check the browser console for detailed logs (F12)</li>
-                        </ul>
-                      </div>
-                      <div className="mt-4">
-                        <button
-                          onClick={() => window.history.back()}
-                          className="px-3 py-1.5 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
-                        >
-                          Go back to department selection
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                <div className="text-center py-12">
+                  <DocumentTextIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 text-sm">No files found from this department.</p>
                 </div>
               ) : filteredFiles.length === 0 ? (
                 <div className="border rounded bg-gray-50 p-4">

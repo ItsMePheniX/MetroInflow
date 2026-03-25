@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
-import { createUser as apiCreateUser } from '../adminApi';
+import { getAdminSupabase } from '../../adminSupabaseClient';
 
 const UserRegistrationForm = ({ onUserAdded }) => {
   const [formData, setFormData] = useState({
@@ -144,20 +144,47 @@ const UserRegistrationForm = ({ onUserAdded }) => {
         position,
       } = formData;
 
-      // Use backend admin API to create the user (service-role key stays on the server).
+      // Use the admin Supabase client to create the user directly
+      // This uses the service_role key to call the Supabase Auth Admin API.
       // The Postgres trigger (handle_new_user) auto-creates the public.users row from user_metadata.
-      const userMetadata = {
-        name: fullName,
-        phone_number: phoneNumber,
-        dob: dob || null,
-        gender: gender || null,
-        address: address || null,
-        d_uuid: departmentUuid || null,
-        r_uuid: position === "head" ? null : (roleUuid || null),
-        position: position || "regular",
-      };
+      const adminClient = getAdminSupabase();
+      const { error: createError } = await adminClient.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: false,
+        user_metadata: {
+          name: fullName,
+          phone_number: phoneNumber,
+          dob: dob || null,
+          gender: gender || null,
+          address: address || null,
+          d_uuid: departmentUuid || null,
+          r_uuid: position === "head" ? null : (roleUuid || null),
+          position: position || "regular",
+        },
+      });
 
-      await apiCreateUser({ email, password, userMetadata });
+      if (createError) {
+        throw createError;
+      }
+
+      // Send confirmation email using the regular (anon) supabase client.
+      // supabase.auth.resend() triggers Supabase to send the actual email,
+      // unlike generateLink which only generates a URL without sending.
+      try {
+        const { error: resendError } = await supabase.auth.resend({
+          type: "signup",
+          email,
+          options: {
+            emailRedirectTo: process.env.REACT_APP_REDIRECT_URL || "http://localhost:3000/login",
+          },
+        });
+        if (resendError) {
+          console.warn("Could not send confirmation email:", resendError.message);
+        }
+      } catch (emailErr) {
+        console.warn("Could not send confirmation email:", emailErr);
+      }
 
       // Success
       setRegistrationStatus({

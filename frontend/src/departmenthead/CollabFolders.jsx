@@ -571,9 +571,9 @@ const CollabFolders = () => {
             sourceDeptName = 'Unknown Department';
           }
           
-          // Log all files instead of skipping them
+          // Skip files from our own department — they shouldn't count as "received"
           if (sourceDeptId === profile.d_uuid) {
-            // Don't return null here, include the file
+            return null;
           }
           
           // Get user info
@@ -913,20 +913,24 @@ const CollabFolders = () => {
 
   // We're now fetching department names directly in the main fetch function
   // This useEffect is kept for backward compatibility
+  // Fetch department names only when new department IDs appear
+  // NOTE: deptMap is intentionally NOT in the dependency array to avoid infinite loops
   useEffect(() => {
-    if (Object.keys(deptMap).length === 0 && deptIds.length > 0) {
-      const fetchDeptNames = async () => {
-        const { data, error } = await supabase.from('department').select('d_uuid, d_name').in('d_uuid', deptIds);
-        if (error) { 
-          return; 
-        }
-        const map = {};
-        (data || []).forEach(d => { map[d.d_uuid] = d.d_name; });
-        setDeptMap(prevMap => ({...prevMap, ...map}));
-      };
-      fetchDeptNames();
-    }
-  }, [deptIds, deptMap]);
+    if (deptIds.length === 0) return;
+    // Only fetch names for departments we don't already have
+    const missingIds = deptIds.filter(id => !deptMap[id]);
+    if (missingIds.length === 0) return;
+
+    const fetchDeptNames = async () => {
+      const { data, error } = await supabase.from('department').select('d_uuid, d_name').in('d_uuid', missingIds);
+      if (error) return;
+      const map = {};
+      (data || []).forEach(d => { map[d.d_uuid] = d.d_name; });
+      setDeptMap(prevMap => ({...prevMap, ...map}));
+    };
+    fetchDeptNames();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deptIds]);
 
   const cards = useMemo(() => {
     const recByDept = {};
@@ -1046,15 +1050,6 @@ const CollabFolders = () => {
     <div>
       {error && <div className="mb-3 border border-red-200 bg-red-50 text-red-700 p-2 rounded">{error}</div>}
       
-      {/* Debug controls (only visible for debugging) */}
-      <div className="mb-4 bg-gray-100 p-3 rounded border">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-md font-medium">Collaboration Files Diagnostics</h3>
-
-        </div>
-        
-
-      </div>
       
       {loading ? (
         <div className="flex items-center justify-center h-64">
@@ -1066,68 +1061,12 @@ const CollabFolders = () => {
             <div>Loading collaboration folders…</div>
           </div>
         </div>
-      ) : cards.length === 0 && (received.length > 0 || sent.length > 0) ? (
-        <div className="border rounded bg-white p-8 text-center">
-          <BuildingOfficeIcon className="h-12 w-12 mx-auto text-amber-400 mb-4" />
-          <h3 className="text-lg font-medium text-amber-900 mb-2">Files Found But Not Categorized</h3>
-          <p className="text-amber-800 mb-4">
-            We found {received.length + sent.length} files in the database, but could not categorize them by department.
-            This could be because the source department information is missing.
-          </p>
-          <div className="flex justify-center space-x-2">
-            <button
-              onClick={() => {
-                setTestResults(JSON.stringify({
-                  receivedSample: received.slice(0, 3),
-                  sentSample: sent.slice(0, 3),
-                  totalReceived: received.length,
-                  totalSent: sent.length
-                }, null, 2));
-              }}
-              className="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700"
-            >
-              Show First 3 Files
-            </button>
-            <button
-              onClick={runDatabaseTest}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              Run Detailed Test
-            </button>
-          </div>
-        </div>
       ) : cards.length === 0 ? (
-        <div className="border rounded bg-white p-8 text-center">
-          <BuildingOfficeIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No collaboration data found</h3>
-          <p className="text-gray-600 mb-4">
-            There are no files shared between departments yet. Files will appear here when they are shared with your department or 
-            when your department shares files with others.
-          </p>
-          <div className="text-left mx-auto max-w-xl bg-yellow-50 p-3 rounded border border-yellow-200 text-xs text-yellow-800">
-            <p className="font-semibold mb-1">Troubleshooting tips:</p>
-            <ul className="list-disc list-inside space-y-1">
-              <li>Make sure your user account is correctly assigned to a department</li>
-              <li>Share files with other departments from the file view screen</li>
-              <li>Ask other departments to share files with your department</li>
-              <li>Check the diagnostic information for detailed debugging</li>
-              <li>Current user position: {profile?.position || 'Unknown'}</li>
-              <li>Current department ID: {profile?.d_uuid || 'None'}</li>
-              <li>Total files fetched: {received.length + sent.length}</li>
-              <li>Files received: {received.length} / Files sent: {sent.length}</li>
-            </ul>
-          </div>
-          <div className="mt-4 flex gap-3 justify-center">
-
-          </div>
-          
-
-          <div className="mt-4">
-            <p className="text-sm text-gray-500 mt-2">
-              Department d_uuid: {profile?.d_uuid || 'not set'}
-            </p>
-          </div>
+        <div className="border rounded bg-white p-12 text-center">
+          <BuildingOfficeIcon className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+          <p className="text-gray-500 text-sm">No collaboration files found.</p>
         </div>
+
       ) : (
         <div>
           {/* Horizontal department strip */}

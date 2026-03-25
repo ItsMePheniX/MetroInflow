@@ -650,7 +650,7 @@ const HeadDashboard = () => {
     // Fetch dashboard data
     useEffect(() => {
         const fetchDashboardData = async () => {
-            if (!userProfile?.department_id) return;
+            if (!userProfile?.d_uuid && !userProfile?.department_id) return;
 
             try {
                 setLoading(true);
