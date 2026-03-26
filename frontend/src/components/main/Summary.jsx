@@ -24,129 +24,228 @@ const Summary = () => {
     hasFetchedRef.current = true;
 
     const fetchSummary = async () => {
-  setLoading(true);
+      setLoading(true);
 
-  // Atomic upsert - creates if not exists, ignores if exists
-  const { error: upsertError } = await supabase
-    .from("summary")
-    .upsert(
-      {
-        f_uuid: f_uuid,
-        summary: "",
-        status: false,
-        state: "pending",
-        ocr_confidence: 0,
-        extracted_text_length: 0,
-        extraction_time_ms: 0,
-        summarization_time_ms: 0,
-        total_time_ms: 0,
-        error_message: "",
-        retry_count: 0,
-      },
-      {
-        onConflict: "f_uuid",
-        ignoreDuplicates: true,
+      // Atomic upsert - creates if not exists, ignores if exists
+      const { error: upsertError } = await supabase
+        .from("summary")
+        .upsert(
+          {
+            f_uuid: f_uuid,
+            summary: "",
+            status: false,
+            state: "pending",
+            ocr_confidence: 0,
+            extracted_text_length: 0,
+            extraction_time_ms: 0,
+            summarization_time_ms: 0,
+            total_time_ms: 0,
+            error_message: "",
+            retry_count: 0,
+          },
+          {
+            onConflict: "f_uuid",
+            ignoreDuplicates: true,
+          }
+        );
+      
+      if (upsertError) {
+        console.error("Summary upsert failed:", upsertError);
+        setSummaryData(null);
+        setLoading(false);
+        return;
       }
-    );
-    // ❌ No .select() here
 
-  if (upsertError) {
-    console.error("Summary upsert failed:", upsertError);
-    setSummaryData(null);
-    setLoading(false);
-    return;
-  }
+      // Always re-fetch after upsert to get the actual row
+      const { data, error: fetchError } = await supabase
+        .from("summary")
+        .select("*")
+        .eq("f_uuid", f_uuid)
+        .maybeSingle();
 
-  // Always re-fetch after upsert to get the actual row
-  const { data, error: fetchError } = await supabase
-    .from("summary")
-    .select("*")
-    .eq("f_uuid", f_uuid)
-    .maybeSingle();
+      if (fetchError) {
+        console.error("Summary fetch failed:", fetchError);
+        setSummaryData(null);
+      } else {
+        setSummaryData(data);
+      }
 
-  if (fetchError) {
-    console.error("Summary fetch failed:", fetchError);
-    setSummaryData(null);
-  } else {
-    setSummaryData(data);
-  }
-
-  setLoading(false);
-};
+      setLoading(false);
+    };
+    
     fetchSummary();
+
+    // Real-time subscription for automatic updates
+    const subscription = supabase
+      .channel("summary-updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "summary",
+          filter: `f_uuid=eq.${f_uuid}`,
+        },
+        (payload) => {
+          setSummaryData(payload.new);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
   }, [f_uuid]);
 
   if (!f_uuid)
     return (
-      <div className="p-8 text-red-500">
-        No file selected for summary.{" "}
+      <div className="min-h-screen bg-gray-50 p-4">
         <button
-          className="underline text-blue-600"
           onClick={() => navigate(-1)}
+          className="mb-6 text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2"
         >
-          Go Back
+          ← Back
         </button>
+        <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-lg p-8 text-center">
+          <p className="text-red-600 text-lg">No file selected for summary.</p>
+        </div>
       </div>
     );
 
-  if (loading) return <div>Loading...</div>;
+  if (loading)
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-lg p-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-600 mt-4 text-center">Loading summary...</p>
+        </div>
+      </div>
+    );
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Document Summary</h1>
-      {summaryData ? (
-        <div className="bg-white p-6 rounded shadow border border-gray-200">
-          <div className="mb-4">
-            <p className="text-sm font-semibold text-gray-700">
-              Status: <span className={summaryData.status ? "text-green-600" : "text-yellow-600"}>
-                {summaryData.status ? "Completed" : "Pending"}
-              </span>
-            </p>
-            {summaryData.state && (
-              <p className="text-sm text-gray-600">State: {summaryData.state}</p>
-            )}
-          </div>
+    <div className="min-h-screen bg-gray-50 p-4 pb-10">
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-6 text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2"
+      >
+        ← Back
+      </button>
 
-          <p className="mb-2">
-            <strong>Summary:</strong>
-          </p>
-          <pre className="bg-gray-100 p-4 rounded text-sm whitespace-pre-wrap">
-            {summaryData.summary || "Summary is being generated..."}
-          </pre>
-
-          {summaryData.error_message && (
-            <div className="mt-4 p-3 bg-red-100 border border-red-300 rounded">
-              <p className="text-sm text-red-700">
-                <strong>Error:</strong> {summaryData.error_message}
-              </p>
+      <div className="max-w-3xl mx-auto mt-10 bg-white rounded-2xl shadow-lg p-8">
+        {summaryData ? (
+          <>
+            {/* Header with title and status badge */}
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold text-gray-900">Document Summary</h1>
+                {summaryData.state && (
+                  <p className="text-sm text-gray-500 mt-1">State: {summaryData.state}</p>
+                )}
+              </div>
+              <div className="ml-4">
+                {summaryData.status ? (
+                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
+                    ✅ Complete
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold animate-pulse">
+                    ⏳ Pending
+                  </span>
+                )}
+              </div>
             </div>
-          )}
 
-          <div className="mt-4 text-xs text-gray-500 space-y-1">
-            <p>Created: {new Date(summaryData.created_at).toLocaleString()}</p>
-            {summaryData.updated_at && (
-              <p>Updated: {new Date(summaryData.updated_at).toLocaleString()}</p>
+            {/* Error box */}
+            {summaryData.error_message && summaryData.error_message.trim() !== "" && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex gap-3">
+                <span className="text-red-600 text-xl">⚠️</span>
+                <div>
+                  <p className="text-red-800 font-semibold">Error</p>
+                  <p className="text-red-700 text-sm">{summaryData.error_message}</p>
+                </div>
+              </div>
             )}
-            {summaryData.ocr_confidence !== null && (
-              <p>OCR Confidence: {(summaryData.ocr_confidence * 100).toFixed(2)}%</p>
-            )}
-            {summaryData.extraction_time_ms > 0 && (
-              <p>Extraction Time: {summaryData.extraction_time_ms}ms</p>
-            )}
-            {summaryData.summarization_time_ms > 0 && (
-              <p>Summarization Time: {summaryData.summarization_time_ms}ms</p>
-            )}
-            {summaryData.total_time_ms > 0 && (
-              <p>Total Time: {summaryData.total_time_ms}ms</p>
-            )}
-            {summaryData.retry_count > 0 && (
-              <p>Retry Count: {summaryData.retry_count}</p>
-            )}
+
+            {/* Summary section */}
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Summary</h2>
+              {!summaryData.summary || summaryData.summary.trim() === "" || !summaryData.status ? (
+                <div className="bg-gray-50 rounded-xl p-6 animate-pulse">
+                  <p className="text-gray-400 italic">Generating summary, please wait...</p>
+                  <div className="mt-3 h-4 bg-gray-200 rounded w-full"></div>
+                  <div className="mt-2 h-4 bg-gray-200 rounded w-5/6"></div>
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-xl p-4 text-sm leading-relaxed text-gray-700 whitespace-pre-wrap">
+                  {summaryData.summary}
+                </div>
+              )}
+            </div>
+
+            {/* Metadata grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-gray-200">
+              {summaryData.created_at && (
+                <div>
+                  <p className="text-xs text-gray-500 font-medium mb-1">Created</p>
+                  <p className="text-sm text-gray-700">
+                    {new Date(summaryData.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+              {summaryData.updated_at && (
+                <div>
+                  <p className="text-xs text-gray-500 font-medium mb-1">Updated</p>
+                  <p className="text-sm text-gray-700">
+                    {new Date(summaryData.updated_at).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+              {summaryData.ocr_confidence > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 font-medium mb-1">OCR Confidence</p>
+                  <p className="text-sm text-gray-700">
+                    {(summaryData.ocr_confidence * 100).toFixed(1)}%
+                  </p>
+                </div>
+              )}
+              {summaryData.extraction_time_ms > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 font-medium mb-1">Extraction Time</p>
+                  <p className="text-sm text-gray-700">{summaryData.extraction_time_ms}ms</p>
+                </div>
+              )}
+              {summaryData.summarization_time_ms > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 font-medium mb-1">Summarization</p>
+                  <p className="text-sm text-gray-700">{summaryData.summarization_time_ms}ms</p>
+                </div>
+              )}
+              {summaryData.total_time_ms > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 font-medium mb-1">Total Time</p>
+                  <p className="text-sm text-gray-700">{summaryData.total_time_ms}ms</p>
+                </div>
+              )}
+              {summaryData.retry_count > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 font-medium mb-1">Retry Count</p>
+                  <p className="text-sm text-gray-700">{summaryData.retry_count}</p>
+                </div>
+              )}
+              {summaryData.extracted_text_length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 font-medium mb-1">Text Length</p>
+                  <p className="text-sm text-gray-700">{summaryData.extracted_text_length}</p>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-lg">Failed to create summary entry for this file.</p>
           </div>
-        </div>
-      ) : (
-        <div className="text-gray-500">Failed to create summary entry for this file.</div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
