@@ -32,3 +32,16 @@ __pycache__
 .env.test.local
 .env.production.local
 
+# Go build artifacts
+backend
+*.test
+*.out
+
+# Python caches and bytecode
+**/__pycache__/
+*.pyc
+
+# Local logs and temp files
+*.log
+tmp/
+

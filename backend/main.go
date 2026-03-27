@@ -106,6 +106,54 @@ func main() {
 	// http.HandleFunc("/v1/files/", handlers.GetFileHandler)
 	// http.HandleFunc("/v1/departments", handlers.ListDepartmentsHandler)
 
+	// OCR + LLM first-10-pages processing APIs
+	http.HandleFunc("/v1/documents/process-first-10-pages", handlers.ProcessFirst10PagesHandler)
+	http.HandleFunc("/v1/documents/process-first-10-pages/status", handlers.ProcessFirst10PagesStatusHandler)
+
+	// Summary queue/status APIs
+	http.HandleFunc("/v1/summary/generate", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		handlers.RequestSummaryHandler(w, r)
+	})
+	http.HandleFunc("/v1/summary/status", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		handlers.GetSummaryStatusHandler(w, r)
+	})
+
+	// Direct LLM APIs (proxy to llama completion server)
+	http.HandleFunc("/v1/llm/generate", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		handlers.LLMGenerateHandler(w, r)
+	})
+	http.HandleFunc("/v1/llm/summarize", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		handlers.LLMSummarizeHandler(w, r)
+	})
+
 	//CORS Health check
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -117,6 +165,15 @@ func main() {
 		}
 		w.Write([]byte("OK"))
 	})
+
+	// Start summary worker goroutine (polls every 3 seconds)
+	go func() {
+		ticker := time.NewTicker(3 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			handlers.ProcessSummaryWorkerTask()
+		}
+	}()
 
 	//Start notification polling goroutine
 	go func() {
