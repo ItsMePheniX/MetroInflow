@@ -145,7 +145,16 @@ export const AuthProvider = ({ children }) => {
       } = await supabase.auth.getSession();
 
       setSession(session);
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        const profile = await getUserProfile(currentUser.id);
+        setUserProfile(profile);
+      } else {
+        setUserProfile(null);
+      }
+
       setLoading(false);
     };
 
@@ -153,9 +162,17 @@ export const AuthProvider = ({ children }) => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        const profile = await getUserProfile(currentUser.id);
+        setUserProfile(profile);
+      } else {
+        setUserProfile(null);
+      }
     });
 
     return () => {
