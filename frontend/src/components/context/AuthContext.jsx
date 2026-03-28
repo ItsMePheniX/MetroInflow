@@ -72,8 +72,18 @@ export const AuthProvider = ({ children }) => {
 
   // ── Sign out ───────────────────────────────────────────
   const signOutUser = async () => {
+    // Clear local auth state first so UI responds immediately.
+    setSession(null);
+    setUser(null);
     setUserProfile(null);
-    await supabase.auth.signOut();
+
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    if (error) {
+      console.error("signOutUser error:", error);
+      return { success: false, error };
+    }
+
+    return { success: true };
   };
 
   // ── Profile fetching (DB: users + department + role joins) ──

@@ -7,6 +7,7 @@ const Profile = () => {
     const { user, userProfile, profileLoading, isEmailVerified, signOutUser, refreshUserProfile, loading: authLoading } = useAuth();
     const navigate = useNavigate();
     const [error, setError] = useState(null);
+    const [isSigningOut, setIsSigningOut] = useState(false);
 
     useEffect(() => {
         if (authLoading) return;
@@ -31,8 +32,18 @@ const Profile = () => {
     }, [user, userProfile, profileLoading, refreshUserProfile, navigate, authLoading, signOutUser]);
 
     const handleSignOut = async () => {
-        await signOutUser();
-        navigate('/login');
+        setIsSigningOut(true);
+        try {
+            const result = await signOutUser();
+            if (!result?.success) {
+                console.error('Logout warning:', result?.error);
+            }
+        } catch (err) {
+            console.error('Unexpected logout error:', err);
+        } finally {
+            navigate('/login', { replace: true });
+            setIsSigningOut(false);
+        }
     };
 
     if (authLoading || profileLoading) {
@@ -138,10 +149,11 @@ const Profile = () => {
             <div className="mt-10 flex justify-center">
                 <button
                     onClick={handleSignOut}
+                    disabled={isSigningOut}
                     className="flex items-center gap-2 px-6 py-3 text-red-600 font-semibold bg-red-50 rounded-lg hover:bg-red-100 transition"
                 >
                     <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                    Log Out
+                    {isSigningOut ? 'Signing out...' : 'Log Out'}
                 </button>
             </div>
         </div>
