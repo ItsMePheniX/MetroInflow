@@ -1,8 +1,14 @@
 // Admin API helper — calls the Go backend admin endpoints instead of using
 // the Supabase service-role key directly in the browser.
 
-const API_BASE =
-  process.env.REACT_APP_API_URL || "http://localhost:8080";
+const DEFAULT_PROD_API_BASE = "https://metroinflow.onrender.com";
+
+const API_BASE = process.env.REACT_APP_API_URL || (
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://localhost:8080"
+    : DEFAULT_PROD_API_BASE
+);
 
 /**
  * Get the stored admin token (set on login).
