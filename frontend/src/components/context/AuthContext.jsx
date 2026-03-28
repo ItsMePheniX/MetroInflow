@@ -10,6 +10,19 @@ export const AuthProvider = ({ children }) => {
   const [profileLoading, setProfileLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const clearLikelyCorruptedAuthStorage = () => {
+    try {
+      const keys = Object.keys(localStorage || {});
+      keys.forEach((key) => {
+        if (key.startsWith("sb-")) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch {
+      // Ignore storage cleanup errors; we still proceed with a signed-out state.
+    }
+  };
+
   // ── helpers ──────────────────────────────────────────────
 
   /** Whether the current user's email is verified */
@@ -150,22 +163,30 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
 
     const getSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      setSession(session);
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
+        setSession(session);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
 
-      if (currentUser) {
-        const profile = await getUserProfile(currentUser.id);
-        setUserProfile(profile);
-      } else {
+        if (currentUser) {
+          const profile = await getUserProfile(currentUser.id);
+          setUserProfile(profile);
+        } else {
+          setUserProfile(null);
+        }
+      } catch (err) {
+        console.error("Auth bootstrap failed:", err);
+        clearLikelyCorruptedAuthStorage();
+        setSession(null);
+        setUser(null);
         setUserProfile(null);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     getSession();
@@ -173,14 +194,21 @@ export const AuthProvider = ({ children }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
+      try {
+        setSession(session);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
 
-      if (currentUser) {
-        const profile = await getUserProfile(currentUser.id);
-        setUserProfile(profile);
-      } else {
+        if (currentUser) {
+          const profile = await getUserProfile(currentUser.id);
+          setUserProfile(profile);
+        } else {
+          setUserProfile(null);
+        }
+      } catch (err) {
+        console.error("Auth state change handling failed:", err);
+        setSession(null);
+        setUser(null);
         setUserProfile(null);
       }
     });
@@ -218,7 +246,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? <div className="p-6 text-center text-gray-600">Loading...</div> : children}
     </AuthContext.Provider>
   );
 };
