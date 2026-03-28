@@ -10,12 +10,21 @@ export const AuthProvider = ({ children }) => {
   const [profileLoading, setProfileLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const withTimeout = (promise, ms, label) =>
+    Promise.race([
+      promise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+      ),
+    ]);
+
   const clearLikelyCorruptedAuthStorage = () => {
     try {
-      const keys = Object.keys(localStorage || {});
+      if (typeof window === "undefined" || !window.localStorage) return;
+      const keys = Object.keys(window.localStorage);
       keys.forEach((key) => {
         if (key.startsWith("sb-")) {
-          localStorage.removeItem(key);
+          window.localStorage.removeItem(key);
         }
       });
     } catch {
@@ -127,10 +136,17 @@ export const AuthProvider = ({ children }) => {
   const refreshUserProfile = useCallback(async () => {
     if (!user?.id) return null;
     setProfileLoading(true);
-    const profile = await getUserProfile(user.id);
-    setUserProfile(profile);
-    setProfileLoading(false);
-    return profile;
+    try {
+      const profile = await withTimeout(getUserProfile(user.id), 8000, "refreshUserProfile");
+      setUserProfile(profile);
+      return profile;
+    } catch (err) {
+      console.error("refreshUserProfile failed:", err);
+      setUserProfile(null);
+      return null;
+    } finally {
+      setProfileLoading(false);
+    }
   }, [user?.id, getUserProfile]);
 
   // ── Update user role ───────────────────────────────────
@@ -164,16 +180,23 @@ export const AuthProvider = ({ children }) => {
 
     const getSession = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        const sessionResult = await withTimeout(
+          supabase.auth.getSession(),
+          8000,
+          "supabase.auth.getSession"
+        );
+        const session = sessionResult?.data?.session ?? null;
 
         setSession(session);
         const currentUser = session?.user ?? null;
         setUser(currentUser);
 
         if (currentUser) {
-          const profile = await getUserProfile(currentUser.id);
+          const profile = await withTimeout(
+            getUserProfile(currentUser.id),
+            8000,
+            "initial getUserProfile"
+          );
           setUserProfile(profile);
         } else {
           setUserProfile(null);
