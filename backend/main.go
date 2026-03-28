@@ -25,53 +25,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func checkDBConnection() {
-	url := os.Getenv("SUPABASE_URL")
-	key := os.Getenv("SUPABASE_ANON_KEY")
-	if key == "" {
-		key = os.Getenv("SUPABASE_SERVICE_KEY")
-	}
-
-	if url == "" || key == "" {
-		log.Println("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY")
-		return
-	}
-
-	endpoint := fmt.Sprintf("%s/rest/v1/test_connection?limit=1", url)
-
-	req, err := http.NewRequest("GET", endpoint, nil)
-	if err != nil {
-		log.Printf("Failed to build DB request: %v\n", err)
-		return
-	}
-	req.Header.Set("Authorization", "Bearer "+key)
-	req.Header.Set("apikey", key)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Printf("Failed DB connection: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		log.Printf("DB responded with error: %s\n", resp.Status)
-		return
-	}
-
-	var rows []map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&rows); err != nil {
-		log.Printf("Could not decode DB response: %v\n", err)
-		return
-	}
-
-	if len(rows) == 0 {
-		log.Println("Connected to Supabase, but no rows in test_connection table yet")
-	} else {
-		log.Printf("Connected! Found a row: %+v\n", rows[0])
-	}
-}
-
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, falling back to system environment")
@@ -79,8 +32,6 @@ func main() {
 
 	config.InitConfig()
 	log.Println("Config initialized.")
-
-	checkDBConnection()
 
 	connStr := os.Getenv("DATABASE_URL")
 	if err := config.InitDB(connStr); err != nil {
