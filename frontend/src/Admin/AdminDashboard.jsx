@@ -37,9 +37,15 @@ const AdminDashboard = () => {
       navigate('/login');
       return;
     }
-    
-    const sessionData = JSON.parse(adminSession);
-    setAdminInfo(sessionData);
+
+    try {
+      const sessionData = JSON.parse(adminSession);
+      setAdminInfo(sessionData);
+    } catch {
+      safeLocalStorage.removeItem('adminSession');
+      navigate('/login');
+      return;
+    }
     
     // Load initial data
     fetchDashboardData();
