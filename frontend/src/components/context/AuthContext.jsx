@@ -84,16 +84,7 @@ export const AuthProvider = ({ children }) => {
     setUser(currentUser);
 
     if (currentUser?.id) {
-      setProfileLoading(true);
-      try {
-        const profile = await getUserProfileWithRetry(currentUser.id);
-        setUserProfile(profile);
-      } catch (profileErr) {
-        console.error("signIn profile fetch failed:", profileErr);
-        setUserProfile(null);
-      } finally {
-        setProfileLoading(false);
-      }
+      loadProfileForUser(currentUser.id);
     } else {
       setUserProfile(null);
     }
@@ -165,22 +156,31 @@ export const AuthProvider = ({ children }) => {
     }
   }, [getUserProfile]);
 
-  /** Force-refresh the cached userProfile from the DB */
-  const refreshUserProfile = useCallback(async () => {
-    if (!user?.id) return null;
+  const loadProfileForUser = useCallback(async (uuid) => {
+    if (!uuid) {
+      setUserProfile(null);
+      return null;
+    }
+
     setProfileLoading(true);
     try {
-      const profile = await getUserProfileWithRetry(user.id);
+      const profile = await getUserProfileWithRetry(uuid);
       setUserProfile(profile);
       return profile;
     } catch (err) {
-      console.error("refreshUserProfile failed:", err);
+      console.error("loadProfileForUser failed:", err);
       setUserProfile(null);
       return null;
     } finally {
       setProfileLoading(false);
     }
-  }, [user?.id, getUserProfileWithRetry]);
+  }, [getUserProfileWithRetry]);
+
+  /** Force-refresh the cached userProfile from the DB */
+  const refreshUserProfile = useCallback(async () => {
+    if (!user?.id) return null;
+    return loadProfileForUser(user.id);
+  }, [user?.id, loadProfileForUser]);
 
   // ── Update user role ───────────────────────────────────
   const updateUserRole = async (uuid, r_uuid) => {
@@ -220,19 +220,7 @@ export const AuthProvider = ({ children }) => {
       setUser(currentUser);
 
       if (currentUser) {
-        setProfileLoading(true);
-        try {
-          const profile = await getUserProfileWithRetry(currentUser.id);
-          if (isMounted) {
-            setUserProfile(profile);
-          }
-        } catch (err) {
-          console.error("applySession profile fetch failed:", err);
-        } finally {
-          if (isMounted) {
-            setProfileLoading(false);
-          }
-        }
+        loadProfileForUser(currentUser.id);
       } else {
         setUserProfile(null);
       }
@@ -273,7 +261,7 @@ export const AuthProvider = ({ children }) => {
       isMounted = false;
       subscription?.unsubscribe();
     };
-  }, [getUserProfileWithRetry]);
+  }, [loadProfileForUser]);
 
   const value = {
     session,
