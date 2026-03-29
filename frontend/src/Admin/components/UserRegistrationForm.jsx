@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { createUser } from '../adminApi';
 
+const getEmailRedirectURL = () => {
+  const configured = (process.env.REACT_APP_REDIRECT_URL || '').trim();
+  if (configured) return configured;
+
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/login`;
+  }
+
+  return 'http://localhost:3000/login';
+};
+
 const UserRegistrationForm = ({ onUserAdded }) => {
   const [formData, setFormData] = useState({
     fullName: "",
@@ -168,7 +179,7 @@ const UserRegistrationForm = ({ onUserAdded }) => {
           type: "signup",
           email,
           options: {
-            emailRedirectTo: process.env.REACT_APP_REDIRECT_URL || "http://localhost:3000/login",
+            emailRedirectTo: getEmailRedirectURL(),
           },
         });
         if (resendError) {

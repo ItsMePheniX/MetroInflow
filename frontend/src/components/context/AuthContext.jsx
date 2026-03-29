@@ -3,6 +3,17 @@ import { supabase } from "../../supabaseClient";
 
 const AuthContext = createContext();
 
+const getEmailRedirectURL = () => {
+  const configured = (process.env.REACT_APP_REDIRECT_URL || "").trim();
+  if (configured) return configured;
+
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/login`;
+  }
+
+  return "http://localhost:3000/login";
+};
+
 export const AuthProvider = ({ children }) => {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
@@ -45,7 +56,7 @@ export const AuthProvider = ({ children }) => {
       email,
       password,
       options: {
-        emailRedirectTo: process.env.REACT_APP_REDIRECT_URL || "http://localhost:3000/login",
+        emailRedirectTo: getEmailRedirectURL(),
         data: {
           name: fullName,
           phone_number: phoneNumber,
